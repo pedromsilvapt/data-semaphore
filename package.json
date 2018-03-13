@@ -1,0 +1,21 @@
+{
+  "name": "data-semaphore",
+  "version": "0.1.0",
+  "description": "Lightweight TypeScript/ES2017 class to simulate an asynchonous semaphore, with several utility functions",
+  "main": "./lib/Semaphore.js",
+  "types": "./lib/Semaphore.d.ts",
+  "repository": "pedromsilvapt/data-semaphore",
+  "keywords": [
+    "js",
+    "semaphore",
+    "concurrency",
+    "data",
+    "limit",
+    "synchronization"
+  ],
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Pedro M. Silva <pemiolsi@hotmail.com>",
+  "license": "ISC"
+}
