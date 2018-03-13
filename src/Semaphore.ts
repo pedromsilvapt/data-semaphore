@@ -11,7 +11,7 @@ export interface SemaphoreRelease {
 }
 
 export class Semaphore {
-    protected queue : SemahporeQueue<SemaphoreRelease>[];
+    protected queue : SemahporeQueue<SemaphoreRelease>[] = [];
 
     public count : number;
 
@@ -36,7 +36,8 @@ export class Semaphore {
     }
 
     release () : void {
-        let canIncrease : boolean = true;
+        this.count++;
+        
         let canCleanup : boolean = true;
         let releasedCount : number = 0;
         
@@ -59,8 +60,6 @@ export class Semaphore {
 
             item.resolve( this.release.bind( this ) );
 
-            canIncrease = false;
-
             if ( canCleanup ) {
                 releasedCount++;
             }
@@ -70,10 +69,6 @@ export class Semaphore {
 
         if ( releasedCount > 0 ) {
             this.queue.splice( 0, releasedCount );
-        }
-
-        if ( canIncrease ) {
-            this.count++;
         }
     }
 
@@ -111,7 +106,7 @@ export class SemaphorePool<T> {
 
         await semaphore.acquire();
 
-        return this.release.bind( this.release, object );
+        return this.release.bind( this, object );
     }
 
     release ( object : T ) : void {
