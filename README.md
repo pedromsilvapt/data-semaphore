@@ -68,3 +68,33 @@ class HeavyUserTasks {
     }
 }
 ```
+
+## ReadWriteSemaphore
+Sometimes it is useful to have two interconnected semaphores, one for reading operations (that might accept infinite concurrent operations)
+and another for writing operations (that runs sequentially, one at a time). The advantage of this method over two completly seperate semaphores is
+that in this example, the writing operation is blocking, besides any other writing operations, all read operations. And conversely, the writing operation does not occur while read operations are running.
+
+```typescript
+const semaphores = new ReadWriteSemaphore();
+semaphores.read // typeof SemaphoreLike
+semaphores.write // typeof SemaphoreLike
+```
+
+## StateSemaphore
+Even more interesting would be being able to design theses state semaphores and specify how they would interact for cases other than reading and writing. For that, there is the `StateSemaphore` class. For instance, let's create a `ReadWriteSemaphore` using this class
+
+```typescript
+let states = new StateSemaphore( [
+    [ 'read', [], Infinity ]
+    [ 'write', [ 'read' ], 1 ]
+] );
+
+await states.acquire( 'read' );
+await states.acquire( 'write' );
+```
+
+That's it. Aditionally, you can also get a semaphore for each state, and use it as any other regular semaphore.
+
+```
+states.getLane( 'read' ) // typeof SemaphoreLike
+```
