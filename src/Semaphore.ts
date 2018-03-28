@@ -113,6 +113,12 @@ export class SemaphorePool<T> {
         this.autoRemove = autoRemove;
     }
 
+    isLocked ( key : T ) : boolean {
+        const sem = this.semaphores.get( key );
+        
+        return sem && sem.isLocked;
+    }
+
     async acquire ( object : T ) : Promise<SemaphoreRelease> {
         let semaphore = this.semaphores.get( object );
 
@@ -156,6 +162,32 @@ export class SemaphorePool<T> {
     }
 }
 
+export class SemaphorePoolHandle<K = any> implements SemaphoreLike {
+    protected pool : SemaphorePool<K>;
+
+    protected name : K;
+
+    constructor ( pool : SemaphorePool<K>, name : K ) {
+        this.pool = pool;
+        this.name = name;
+    }
+
+    get isLocked () : boolean {
+        return this.pool.isLocked( this.name );
+    }
+
+    acquire () : Promise<SemaphoreRelease> {
+        return this.pool.acquire( this.name );
+    }
+    release () : void {
+        return this.pool.release( this.name );
+    }
+
+    use<T> ( fn : () => T | PromiseLike<T> ) : Promise<T> {
+        return this.pool.use( this.name, fn );
+    }
+}
+
 export class Mutex extends Semaphore {
     constructor () {
         super( 1 );
@@ -170,31 +202,31 @@ export class MutexPool<T> extends SemaphorePool<T> {
 
 export function Synchronized<T> ( count : number = 1, getter ?: ( ...args : any[] ) => T ) {
     if ( getter ) {
-        return (target: Object, key: string | symbol, descriptor: TypedPropertyDescriptor<Function>) => {
+        return ( target : Object, key : string | symbol, descriptor : TypedPropertyDescriptor<Function> ) => {
             let semaphoreMap : SemaphorePool<T> = new SemaphorePool( count );
 
             return {
                 value: function ( ...args : any[] ) {
                     const object = getter.apply( this, args );
 
-                    return semaphoreMap.use( object, () => descriptor.value.apply( target, args ) );
+                    return semaphoreMap.use( object, () => descriptor.value.apply( this, args ) );
                 }
             };
         };
     } else {
-        return (target: Object, key: string | symbol, descriptor: TypedPropertyDescriptor<Function>) => {
+        return ( target : Object, key : string | symbol, descriptor : TypedPropertyDescriptor<Function> ) => {
             let semaphore = new Semaphore( count );
 
             return {
                 value: function( ... args: any[]) {
-                    return semaphore.use( () => descriptor.value.apply( target, args ) );
+                    return semaphore.use( () => descriptor.value.apply( this, args ) );
                 }
             };
         };
     }
 }
 
-export function SynchronizedBy<T> ( semaphore : SemaphoreLike | ( ( ...args : any[] ) => SemaphoreLike ) ) {
+export function SynchronizedBy ( semaphore : SemaphoreLike | ( ( self : any, ...args : any[] ) => SemaphoreLike ) ) {
     let getter : ( ...args : any[] ) => SemaphoreLike;
 
     if ( typeof semaphore != 'function' ) {
@@ -203,10 +235,48 @@ export function SynchronizedBy<T> ( semaphore : SemaphoreLike | ( ( ...args : an
         getter = semaphore;
     }
     
-    return ( target : Object, key : string | symbol, descriptor : TypedPropertyDescriptor<Function> ) => {
+    return ( target : object, key : string | symbol, descriptor : TypedPropertyDescriptor<Function> ) => {
         return {
-            value: function( ... args: any[]) {
-                return getter( ...args ).use( () => descriptor.value.apply( target, args ) );
+            value: function( ...args: any[]) {
+                return getter( this, ...args ).use( () => descriptor.value.apply( this, args ) );
+            }
+        };
+    };
+}
+
+export function Batched ( semaphore ?: SemaphoreLike | ( ( self : any, ...args : any[] ) => SemaphoreLike ) ) {
+    let getter : ( ...args : any[] ) => SemaphoreLike;
+
+    if ( !semaphore ) {
+        const tmp = new Semaphore( 1 );
+
+        getter = () => tmp;
+    } else if ( typeof semaphore != 'function' ) {
+        getter = () => semaphore;
+    } else {
+        getter = semaphore;
+    }
+    
+    const calls : Map<SemaphoreLike, any> = new Map();
+
+    return ( target : object, key : string | symbol, descriptor : TypedPropertyDescriptor<Function> ) => {
+        return {
+            value: async function ( ...args: any[] ) {
+                const sem = getter( this, ...args );
+
+                if ( calls.has( sem ) ) {
+                    return calls.get( sem );
+                }
+                
+                const promise = sem.use( () => descriptor.value.apply( this, args ) );
+
+                calls.set( sem, promise );
+
+                try {
+                    return await promise;
+                } finally {
+                    calls.delete( sem );                    
+                }
             }
         };
     };

@@ -1,7 +1,7 @@
 {
   "name": "data-semaphore",
-  "version": "0.3.0",
-  "description": "Lightweight TypeScript/ES2017 class to simulate an asynchonous semaphore, with several utility functions",
+  "version": "0.3.2",
+  "description": "Lightweight TypeScript/ES2017 class to simulate an asynchronous semaphore, with several utility functions",
   "main": "./lib/Semaphore.js",
   "types": "./lib/Semaphore.d.ts",
   "repository": "pedromsilvapt/data-semaphore",
