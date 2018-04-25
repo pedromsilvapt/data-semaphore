@@ -45,10 +45,6 @@ export class Semaphore implements SemaphoreLike {
             return Promise.resolve( this.release.bind( this ) );
         }
 
-        const index = this.queue.length;
-
-        this.queue.push( null );
-
         const future = new Future<SemaphoreRelease>();
         
         this.queue.push( future );
@@ -60,14 +56,11 @@ export class Semaphore implements SemaphoreLike {
         this.count++;
         this.acquired--;
         
-        let canCleanup : boolean = true;
-        let releasedCount : number = 0;
-        
-        while ( this.count > 0 && this.queue.length > 0 ) {
-            this.queue.shift().resolve( this.release.bind( this ) );
-
+        if ( this.queue.length > 0 ) {
             this.count--;
             this.acquired++;
+
+            this.queue.shift().resolve( this.release.bind( this ) );
         }
     }
 
