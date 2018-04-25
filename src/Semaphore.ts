@@ -1,3 +1,5 @@
+import { Future } from '@pedromsilva/data-future'
+
 export interface SemahporeQueue<T> {
     reject ( reason : any ) : void;
 
@@ -21,7 +23,7 @@ export interface SemaphoreLike {
 }
 
 export class Semaphore implements SemaphoreLike {
-    protected queue : SemahporeQueue<SemaphoreRelease>[] = [];
+    protected queue : Future<SemaphoreRelease>[] = [];
 
     public count : number;
 
@@ -47,9 +49,11 @@ export class Semaphore implements SemaphoreLike {
 
         this.queue.push( null );
 
-        return new Promise<SemaphoreRelease>( ( resolve, reject ) => {
-            this.queue[ index ] = { resolve, reject, released: false };
-        } );
+        const future = new Future<SemaphoreRelease>();
+        
+        this.queue.push( future );
+
+        return future.promise;
     }
 
     release () : void {
@@ -59,34 +63,11 @@ export class Semaphore implements SemaphoreLike {
         let canCleanup : boolean = true;
         let releasedCount : number = 0;
         
-        for ( let [ index, item ] of this.queue.entries() ) {
-            if ( item == null ) {
-                canCleanup = false;
+        while ( this.count > 0 && this.queue.length > 0 ) {
+            this.queue.shift().resolve( this.release.bind( this ) );
 
-                continue;
-            }
-
-            if ( item.released ) {
-                if ( canCleanup ) {
-                    releasedCount++;
-                }
-
-                continue;
-            }
-
-            item.released = true;
-
-            item.resolve( this.release.bind( this ) );
-
-            if ( canCleanup ) {
-                releasedCount++;
-            }
-
-            break;
-        }
-
-        if ( releasedCount > 0 ) {
-            this.queue.splice( 0, releasedCount );
+            this.count--;
+            this.acquired++;
         }
     }
 

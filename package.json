@@ -1,6 +1,6 @@
 {
   "name": "data-semaphore",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Lightweight TypeScript/ES2017 class to simulate an asynchronous semaphore, with several utility functions",
   "main": "./lib/Semaphore.js",
   "types": "./lib/Semaphore.d.ts",
@@ -17,5 +17,8 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Pedro M. Silva <pemiolsi@hotmail.com>",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "@pedromsilva/data-future": "^1.0.0"
+  }
 }
