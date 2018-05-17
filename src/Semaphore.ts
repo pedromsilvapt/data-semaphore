@@ -57,9 +57,6 @@ export class Semaphore implements SemaphoreLike {
         this.acquired--;
         
         if ( this.queue.length > 0 ) {
-            this.count--;
-            this.acquired++;
-
             this.queue.shift().resolve( this.release.bind( this ) );
         }
     }
