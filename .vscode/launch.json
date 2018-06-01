@@ -8,7 +8,7 @@
             "type": "node",
             "request": "launch",
             "name": "Launch Program",
-            "program": "${workspaceFolder}\\lib\\ReadWriteSemaphore.js",
+            "program": "${workspaceFolder}\\lib\\Semaphore.js",
             "outFiles": [
                 "${workspaceFolder}/lib/**/*.js"
             ]

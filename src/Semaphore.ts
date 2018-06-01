@@ -274,7 +274,7 @@ export class StackedSemaphore<K> {
         return this.lastKey == blocker;
     }
 
-    async acquire ( key : K ) {
+    acquire ( key : K ) {
         // If there is a lock acquired, and the key matches, increment the counter
         // The counter is used so that when the release method is called,
         // Only the last call actually releases the lock, since only the first
@@ -282,9 +282,7 @@ export class StackedSemaphore<K> {
         if ( this.lastAcquired && key == this.lastKey ) {
             this.counts[ this.counts.length - 1 ]++;
 
-            await this.lastAcquired;
-
-            return this.release.bind( this );
+            return this.lastAcquired.then( () => this.release.bind( this ) );
         }
 
         // If the key is different, add the number 1 to the counter
@@ -295,9 +293,7 @@ export class StackedSemaphore<K> {
 
         this.lastKey = key;
 
-        await this.lastAcquired;
-
-        return this.release.bind( this );
+        return this.lastAcquired.then( () => this.release.bind( this ) );
     }
 
     release () {
@@ -340,7 +336,7 @@ export class PhasedSemaphore implements SemaphoreLike {
         this.count = count;
     }
 
-    async lock ( blocker : string ) {
+    lock ( blocker : string ) {
         if ( !this.available.isLast( blocker ) ) {
             this.semaphores.push( new Semaphore( this.count ) );
         }
@@ -359,7 +355,7 @@ export class PhasedSemaphore implements SemaphoreLike {
     async acquire () : Promise<SemaphoreRelease> {
         const sem = this.semaphores[ this.semaphores.length - 1 ];
 
-        if ( sem.acquired === 0 ) {
+        if ( !sem.isLocked ) {
             await this.available.acquire( null );
         }
 
@@ -373,7 +369,9 @@ export class PhasedSemaphore implements SemaphoreLike {
 
         sem.release();
 
-        this.available.release();
+        if ( sem.acquired < sem.count ) {
+            this.available.release();
+        }
 
         if ( sem.acquired == 0 ) {
             if ( this.semaphores.length > 1 ) {
@@ -527,3 +525,29 @@ export class ReadWriteSemaphore {
         return this.states.getLane( 'write' );
     }
 }
+
+// TODO remove test code
+// const debug = ( sem : any ) => `[${ sem.semaphore.available.counts.join( ',' ) }]`;
+
+// const wait = ( time : number ) => new Promise<void>( resolve => setTimeout( resolve, time * 10 ) );
+
+// const sem = new ReadWriteSemaphore();
+
+// const acquireR = (n : any) => sem.read.acquire().then( () => console.log( 'read acquired', n, debug( sem.read ) ) );
+// const releaseR = (n : any) => { sem.read.release(); console.log( 'read released', n, debug( sem.read ) ) };
+
+// wait( 100 ).then( () => acquireR (1) );
+// wait( 200 ).then( () => acquireR (2) );
+// wait( 250 ).then( () => releaseR(1) );
+// wait( 300 ).then( () => acquireR (3) );
+// wait( 350 ).then( () => releaseR(2) );
+// wait( 360 ).then( () => acquireR (4) );
+// wait( 370 ).then( () => acquireR (5) );
+// wait( 380 ).then( () => acquireR (5) );
+// wait( 400 ).then( () => sem.write.acquire() ).then( () => {
+//     sem.write.release(); console.log( 'write', debug( sem.read ) )
+// } );
+// wait( 410 ).then( () => releaseR(3) );
+// wait( 450 ).then( () => releaseR(4) );
+// wait( 460 ).then( () => releaseR(5) );
+// wait( 470 ).then( () => releaseR(6) );
