@@ -189,7 +189,7 @@ export function Synchronized<T> ( count : number = 1, getter ?: ( ...args : any[
             let semaphore = new Semaphore( count );
 
             return {
-                value: function( ... args: any[]) {
+                value: function ( ...args : any[] ) {
                     return semaphore.use( () => descriptor.value.apply( this, args ) );
                 }
             };
@@ -197,18 +197,20 @@ export function Synchronized<T> ( count : number = 1, getter ?: ( ...args : any[
     }
 }
 
-export function SynchronizedBy ( semaphore : SemaphoreLike | ( ( self : any, ...args : any[] ) => SemaphoreLike ) ) {
+export function SynchronizedBy ( semaphore : string | SemaphoreLike | ( ( self : any, ...args : any[] ) => SemaphoreLike ) ) {
     let getter : ( ...args : any[] ) => SemaphoreLike;
 
-    if ( typeof semaphore != 'function' ) {
-        getter = () => semaphore;
-    } else {
+    if ( typeof semaphore == 'string' ) {
+        getter = self => self[ semaphore ];
+    } else if ( typeof semaphore == 'function' ) {
         getter = semaphore;
+    } else {
+        getter = () => semaphore;
     }
     
     return ( target : object, key : string | symbol, descriptor : TypedPropertyDescriptor<Function> ) => {
         return {
-            value: function( ...args: any[]) {
+            value: function ( ...args : any[] ) {
                 return getter( this, ...args ).use( () => descriptor.value.apply( this, args ) );
             }
         };
