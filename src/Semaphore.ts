@@ -197,7 +197,7 @@ export function Synchronized<T> ( count : number = 1, getter ?: ( ...args : any[
     }
 }
 
-export function SynchronizedBy ( semaphore : string | SemaphoreLike | ( ( self : any, ...args : any[] ) => SemaphoreLike ) ) {
+export function SynchronizedBy ( semaphore : string | SemaphoreLike | ( ( self : any, ...args : any[] ) => SemaphoreLike ), opts : { optional ?: boolean } = {} ) {
     let getter : ( ...args : any[] ) => SemaphoreLike;
 
     if ( typeof semaphore == 'string' ) {
@@ -211,20 +211,30 @@ export function SynchronizedBy ( semaphore : string | SemaphoreLike | ( ( self :
     return ( target : object, key : string | symbol, descriptor : TypedPropertyDescriptor<Function> ) => {
         return {
             value: function ( ...args : any[] ) {
-                return getter( this, ...args ).use( () => descriptor.value.apply( this, args ) );
+                const semaphore = getter( this, ...args );
+
+                if ( semaphore ) {
+                    return semaphore.use( () => descriptor.value.apply( this, args ) );
+                } else if ( opts && opts.optional ) {
+                    return descriptor.value.apply( this, args );
+                } else {
+                    throw new Error( `Cannot synchronize method ${ String( key ) } because no semaphore was provided.` );
+                }
             }
         };
     };
 }
 
-export function Batched ( semaphore ?: SemaphoreLike | ( ( self : any, ...args : any[] ) => SemaphoreLike ) ) {
+export function Batched ( semaphore ?: string | SemaphoreLike | ( ( self : any, ...args : any[] ) => SemaphoreLike ), opts : { optional ?: boolean } = {} ) {
     let getter : ( ...args : any[] ) => SemaphoreLike;
 
     if ( !semaphore ) {
         const tmp = new Semaphore( 1 );
 
         getter = () => tmp;
-    } else if ( typeof semaphore != 'function' ) {
+    } else if ( typeof semaphore === 'string' ) {
+        getter = self => self[ semaphore ];
+    } else if ( typeof semaphore !== 'function' ) {
         getter = () => semaphore;
     } else {
         getter = semaphore;
@@ -236,6 +246,14 @@ export function Batched ( semaphore ?: SemaphoreLike | ( ( self : any, ...args :
         return {
             value: async function ( ...args: any[] ) {
                 const sem = getter( this, ...args );
+
+                if ( !sem ) {
+                    if ( opts && opts.optional ) {
+                        return descriptor.value.apply( this, args );
+                    } else {
+                        throw new Error( `Cannot batch method ${ String( key ) } because no semaphore was provided.` );
+                    }
+                }
 
                 if ( calls.has( sem ) ) {
                     return calls.get( sem );
