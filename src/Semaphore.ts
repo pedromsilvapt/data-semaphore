@@ -197,7 +197,7 @@ export function Synchronized<T> ( count : number = 1, getter ?: ( ...args : any[
     }
 }
 
-export function SynchronizedBy ( semaphore : string | SemaphoreLike | ( ( self : any, ...args : any[] ) => SemaphoreLike ), opts : { optional ?: boolean } = {} ) {
+export function SynchronizedBy<T = any> ( semaphore : string | SemaphoreLike | ( ( self : T, ...args : any[] ) => SemaphoreLike ), opts : { optional ?: boolean } = {} ) {
     let getter : ( ...args : any[] ) => SemaphoreLike;
 
     if ( typeof semaphore == 'string' ) {
@@ -225,7 +225,7 @@ export function SynchronizedBy ( semaphore : string | SemaphoreLike | ( ( self :
     };
 }
 
-export function Batched ( semaphore ?: string | SemaphoreLike | ( ( self : any, ...args : any[] ) => SemaphoreLike ), opts : { optional ?: boolean } = {} ) {
+export function Batched<T = any> ( semaphore ?: string | SemaphoreLike | ( ( self : T, ...args : any[] ) => SemaphoreLike ), opts : { optional ?: boolean } = {} ) {
     let getter : ( ...args : any[] ) => SemaphoreLike;
 
     if ( !semaphore ) {
